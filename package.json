@@ -8,6 +8,7 @@
     "start": "node src/index.js",
     "test-debug": "mocha './tests/*/*.test.js' --recursive",
     "test": "nyc --reporter=cobertura --reporter=html mocha './tests/*/*.test.js' --recursive --reporter mocha-junit-reporter",
+    "test-coverage": "nyc --reporter=lcov --reporter=text mocha './tests/*/*.test.js' --recursive",
     "lint": "./node_modules/.bin/eslint ."
   },
   "repository": {
