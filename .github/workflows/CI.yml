@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: 
+      - dev
+  pull_request:
+    types: [opened, reopened, edited]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./
+    services:
+      dbtest:
+        image: postgres            
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+          --name dbtest 
+        env:
+          POSTGRES_PASSWORD: pumaadmin
+          POSTGRES_USER: pumaadmin
+          POSTGRES_DB: puma
+          PGUSER: postgres
+    env:
+      DB_HOST: localhost
+      DB_URL_TEST: postgres://pumaadmin:pumaadmin@localhost:5432/puma
+      ENVIRONMENT: test
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Use Node.js 14.x
+        uses: actions/setup-node@v3
+        with:
+          node-version: 14.x
+
+      - name: Run npm install
+        run: npm install
+      
+      - name: Create and Populate Database
+        run: | 
+          sudo docker cp ./tests/utils/db_drop.sql dbtest:/db_drop.sql
+          sudo docker exec dbtest psql -U pumaadmin -d puma -f /db_drop.sql
+          sudo docker cp ./tests/utils/db_create.sql dbtest:/db_create.sql 
+          sudo docker exec dbtest psql -U pumaadmin -d puma -f /db_create.sql
+          sudo docker cp ./tests/utils/db_populate.sql dbtest:/db_populate.sql
+          sudo docker exec dbtest psql -U pumaadmin -d puma -f /db_populate.sql
+      
+      - name: Run Tests
+        run: npm run test-coverage
+
+      - name: SonarCloud Scan
+        uses: sonarsource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
